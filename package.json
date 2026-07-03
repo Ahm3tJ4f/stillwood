@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "bun src/main.ts"
+    "start": "bun src/main.ts",
+    "check": "vp check",
+    "fmt": "vp fmt"
   },
   "dependencies": {
     "@opentui/core": "^0.5.12"
