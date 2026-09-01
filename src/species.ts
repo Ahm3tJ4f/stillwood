@@ -77,6 +77,26 @@ export const SPECIES: readonly Species[] = [
     bloom: null,
     weight: 2,
   },
+  {
+    id: "spruce",
+    name: "blue spruce",
+    article: "a",
+    leaf: [6, 14],
+    bark: "brown",
+    conifer: true,
+    bloom: null,
+    weight: 1,
+  },
+  {
+    id: "jacaranda",
+    name: "jacaranda",
+    article: "a",
+    leaf: [4, 12],
+    bark: "brown",
+    conifer: false,
+    bloom: 13,
+    weight: 1,
+  },
 ];
 
 const TOTAL = SPECIES.reduce((n, s) => n + s.weight, 0);
