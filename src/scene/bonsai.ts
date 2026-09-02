@@ -3,7 +3,7 @@
 import { BOLD, DIM, type Style } from "../canvas.ts";
 import { hash2 } from "../random.ts";
 import type { Species } from "../species.ts";
-import { growTree, sizeForDuration, type Ink, type Stroke } from "../tree.ts";
+import { growTree, sizeForDuration, type Ink, type Stroke, type TreeForm } from "../tree.ts";
 import { BRIGHT_YELLOW, S, YELLOW } from "./look.ts";
 import type { Frame } from "./types.ts";
 
@@ -48,12 +48,12 @@ function inkStyle(sp: Species, ink: Ink, bold: boolean): Style {
 // Trees are pure functions of (seed, space); keep the few in use.
 const trees = new Map<string, Stroke[]>();
 
-export function treeFor(seed: number, rows: number, cols: number): Stroke[] {
-  const key = `${seed}:${rows}:${cols}`;
+export function treeFor(seed: number, rows: number, cols: number, form: TreeForm): Stroke[] {
+  const key = `${seed}:${rows}:${cols}:${form}`;
   let t = trees.get(key);
   if (!t) {
     if (trees.size > 64) trees.clear();
-    t = growTree(seed, { rows, cols });
+    t = growTree(seed, { rows, cols }, form);
     trees.set(key, t);
   }
   return t;
@@ -101,7 +101,8 @@ export function drawBonsai(c: Frame, area: Area, o: BonsaiOptions): void {
 
   const room = soil - area.y - (area.h >= 10 ? 1 : 0);
   const treeRows = Math.max(3, Math.floor(room * sizeForDuration(o.durationMs)));
-  drawTree(c, cx, soil - 1, treeFor(o.seed, treeRows, area.w - 2), o, area);
+  const form = o.species.conifer ? "conifer" : "broad";
+  drawTree(c, cx, soil - 1, treeFor(o.seed, treeRows, area.w - 2, form), o, area);
 }
 
 /** Draw tree strokes with the trunk base at (cx, baseY), clipped to `clip`. */

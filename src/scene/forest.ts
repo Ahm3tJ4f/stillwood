@@ -45,7 +45,8 @@ function renderWalk(c: Frame, g: Glyphs, s: ForestScene, b: Area): void {
   const room = ground - b.y;
   const trees = s.sessions.map((t) => {
     const rows = walkRows(t, room);
-    const strokes = treeFor(t.seed, rows, rows * 2 + 5);
+    const form = speciesOf(t).conifer ? "conifer" : "broad";
+    const strokes = treeFor(t.seed, rows, rows * 2 + 5, form);
     let minX = 0;
     let maxX = 0;
     let minY = 0;

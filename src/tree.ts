@@ -32,6 +32,12 @@ export interface TreeSpace {
   cols: number;
 }
 
+/**
+ * Broad trees spread wide. Conifers grow straight and narrow, with flat tiers of
+ * needles that get shorter toward a pointed top.
+ */
+export type TreeForm = "broad" | "conifer";
+
 export const STAGES = [
   { from: 0, name: "seed" },
   { from: 0.04, name: "sprout" },
@@ -107,7 +113,7 @@ class Grower {
    * like a bonsai foliage pad, and a ragged fringe from a few wandering sprigs.
    * Leaves appear from the centre outward, so the cluster grows in.
    */
-  foliage(t: number, cx: number, cy: number, rx: number, ry: number): void {
+  foliage(t: number, cx: number, cy: number, rx: number, ry: number, sprigs = true): void {
     const down = Math.max(1, Math.round(ry * 0.5));
     for (let y = cy - ry; y <= cy + down; y++) {
       for (let x = cx - rx; x <= cx + rx; x++) {
@@ -118,8 +124,8 @@ class Grower {
         this.leaf(t + d * 2, x, y, y <= cy);
       }
     }
-    const sprigs = Math.max(2, Math.round(rx * 0.8));
-    for (let k = 0; k < sprigs; k++) {
+    const count = sprigs ? Math.max(2, Math.round(rx * 0.8)) : 0;
+    for (let k = 0; k < count; k++) {
       let x = cx;
       let y = cy;
       const steps = this.int(2, 2 + rx);
@@ -134,13 +140,25 @@ class Grower {
     }
   }
 
-  /** A limb reaching out to one side, with a twig or two, ending in foliage. */
-  limb(t: number, x: number, y: number, side: -1 | 1, reach: number, rx: number, ry: number): void {
+  /**
+   * A limb reaching out to one side, with a twig or two, ending in foliage.
+   * A conifer's limb stays level and carries needles all along it, as a tier.
+   */
+  limb(
+    t: number,
+    x: number,
+    y: number,
+    side: -1 | 1,
+    reach: number,
+    rx: number,
+    ry: number,
+    tier = false,
+  ): void {
     const rising = side > 0 ? "/" : "\\";
     for (let step = 0; step < reach; step++) {
       // Limbs grow a little faster than the trunk climbs.
       t += 0.7;
-      const rise = step > 0 && this.chance(step < reach / 2 ? 0.25 : 0.5);
+      const rise = step > 0 && this.chance(tier ? 0.08 : step < reach / 2 ? 0.25 : 0.5);
       if (rise) {
         y -= 1;
         x += side;
@@ -150,13 +168,29 @@ class Grower {
         this.wood(t, x, y, this.chance(0.8) ? "_" : "~");
       }
       // Leaves come out along the limb as it grows, so a young tree is already green.
+      if (tier) {
+        if (this.chance(0.85)) this.leaf(t + 0.5, x, y - 1, true);
+        if (this.chance(0.5)) this.leaf(t + 0.6, x + side, y - 1, true);
+        continue;
+      }
       if (step >= 1 && this.chance(0.35)) this.leaf(t + 0.5, x + this.int(-1, 1), y - 1, true);
       if (step >= 2 && step < reach - 2 && this.chance(0.2)) {
         this.wood(t + 1, x, y - 1, this.chance(0.5) ? "|" : rising);
         this.foliage(t + 2, x, y - 2, Math.max(1, rx - 2), 1);
       }
     }
-    this.foliage(t + 1, x + side, y - 1, rx, ry);
+    this.foliage(t + 1, x + side, y - 1, rx, ry, !tier);
+  }
+
+  /** A conifer's top: rows of needles narrowing to a single point over the trunk. */
+  spire(t: number, x: number, y: number, rows: number): void {
+    for (let r = 0; r < rows; r++) {
+      const half = rows - 1 - r;
+      for (let dx = -half; dx <= half; dx++) {
+        if (dx !== 0 && !this.chance(0.85)) continue;
+        this.leaf(t + r * 0.5 + Math.abs(dx) * 0.2, x + dx, y - r, r > 0);
+      }
+    }
   }
 }
 
@@ -164,20 +198,25 @@ class Grower {
  * Grow one tree. The same seed and space always give the same tree.
  * Strokes that would fall outside the space are dropped.
  */
-export function growTree(seed: number, space: TreeSpace): Stroke[] {
+export function growTree(seed: number, space: TreeSpace, form: TreeForm = "broad"): Stroke[] {
   const rows = Math.max(3, Math.floor(space.rows));
   const cols = Math.max(9, Math.floor(space.cols));
   const half = Math.floor((cols - 1) / 2);
   const g = new Grower(seed);
+  const conifer = form === "conifer";
 
   const crown = rows >= 16 ? 3 : rows >= 9 ? 2 : 1;
-  const climb = Math.max(
-    2,
-    Math.min(rows - 2, rows - crown - 2 - g.int(0, Math.round(rows * 0.12))),
-  );
+  // A conifer leaves room above its trunk for its pointed top.
+  const climb = conifer
+    ? Math.max(2, rows - crown - 2)
+    : Math.max(2, Math.min(rows - 2, rows - crown - 2 - g.int(0, Math.round(rows * 0.12))));
 
   // The trunk follows a slow S-curve (the moyogi style), starting at the base.
-  const amp = Math.max(1, Math.min(half * 0.22, climb * 0.3)) * (0.6 + 0.4 * g.random());
+  // A conifer's trunk stays nearly straight.
+  const amp =
+    Math.max(1, Math.min(half * 0.22, climb * 0.3)) *
+    (0.6 + 0.4 * g.random()) *
+    (conifer ? 0.35 : 1);
   const waves = 1 + g.random() * 0.7;
   const phase = (g.chance(0.5) ? 1 : -1) * (0.3 + g.random() * 0.4);
   const sway = (row: number) =>
@@ -188,7 +227,9 @@ export function growTree(seed: number, space: TreeSpace): Stroke[] {
 
   const limbs: { t: number; x: number; y: number; side: -1 | 1; height: number }[] = [];
   let side: -1 | 1 = g.chance(0.5) ? -1 : 1;
-  let nextLimb = Math.max(2, Math.round(climb * 0.3));
+  let nextLimb = conifer
+    ? Math.max(1, Math.round(climb * 0.15))
+    : Math.max(2, Math.round(climb * 0.3));
   let x = 0;
   let y = 0;
   let t = 0;
@@ -210,24 +251,40 @@ export function growTree(seed: number, space: TreeSpace): Stroke[] {
     if (thick) g.wood(t, x, y, g.chance(0.6) ? edge + "|" : edge + edge);
     else g.wood(t, x, y, edge);
 
-    if (row === nextLimb && row < climb - 1) {
-      limbs.push({ t, x: side > 0 ? x + (thick ? 1 : 0) : x, y, side, height: row / climb });
-      side = side > 0 ? -1 : 1;
-      nextLimb = row + g.int(2, 3);
+    if (row === nextLimb && row < climb - (conifer ? 0 : 1)) {
+      const right = x + (thick ? 1 : 0);
+      if (conifer) {
+        // A tier on both sides, so the tree keeps a conifer's triangle.
+        limbs.push({ t, x, y, side: -1, height: row / climb });
+        limbs.push({ t, x: right, y, side: 1, height: row / climb });
+        nextLimb = row + 2;
+      } else {
+        limbs.push({ t, x: side > 0 ? right : x, y, side, height: row / climb });
+        side = side > 0 ? -1 : 1;
+        nextLimb = row + g.int(2, 3);
+      }
     }
   }
 
-  const ry = rows >= 14 ? 2 : 1;
+  const ry = rows >= 14 && !conifer ? 2 : 1;
   for (const l of limbs) {
     // Lower limbs reach further. Every limb and its foliage stay inside the space.
-    const rx = Math.max(2, Math.min(7, Math.round(cols * 0.08 * (1.25 - l.height * 0.5))));
+    // A conifer's tiers shorten steadily toward the top.
+    const rx = conifer
+      ? 1
+      : Math.max(2, Math.min(7, Math.round(cols * 0.08 * (1.25 - l.height * 0.5))));
     const room = half - Math.abs(l.x) - rx - 2;
-    const want = Math.round(cols * (0.2 - l.height * 0.1) * (0.7 + g.random() * 0.5));
-    g.limb(l.t, l.x, l.y, l.side, Math.max(1, Math.min(room, want)), rx, ry);
+    const want = conifer
+      ? Math.round(cols * 0.17 * (1.05 - l.height) * (0.85 + g.random() * 0.3))
+      : Math.round(cols * (0.2 - l.height * 0.1) * (0.7 + g.random() * 0.5));
+    g.limb(l.t, l.x, l.y, l.side, Math.max(1, Math.min(room, want)), rx, ry, conifer);
   }
 
-  const apexRx = Math.max(2, Math.min(9, Math.round(cols * 0.1)));
-  g.foliage(t + 1, x, y - crown + 1, apexRx, crown);
+  if (conifer) g.spire(t + 1, x, y - 1, crown + 1);
+  else {
+    const apexRx = Math.max(2, Math.min(9, Math.round(cols * 0.1)));
+    g.foliage(t + 1, x, y - crown + 1, apexRx, crown);
+  }
 
   // Strokes come in growth order at a steady pace, so something grows every few seconds.
   const kept = g.marks
