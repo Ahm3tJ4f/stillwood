@@ -6,8 +6,8 @@
  *   week, month, year   the forest seen from above, grown outward from a cabin;
  *                       an overview, with time running left to right
  *
- * On the map, a few trees are drawn as big crowns and many as single symbols,
- * so the map is full at every zoom. Every tree has its species' colours.
+ * Each range has its own scale: big crowns for a week, smaller ones for a month,
+ * one symbol per tree for a year. Every tree has its species' colours.
  */
 
 import { BOLD, type Style } from "../canvas.ts";
@@ -145,10 +145,18 @@ const ZOOMS: Zoom[] = [
   { w: 1, h: 1, gapX: 0, gapY: 0 },
 ];
 
-/** The biggest crowns that still let every tree fit on the land. */
-function zoomFor(count: number, land: number): Zoom {
-  for (const z of ZOOMS) if (count * (z.w + z.gapX) * (z.h + z.gapY) <= land * 0.6) return z;
-  return ZOOMS.at(-1)!;
+/** About how many trees a busy period holds. Each range's scale is picked to fit that many. */
+const FULL: Record<Exclude<Range, "day">, number> = { week: 40, month: 160, year: 600 };
+
+/**
+ * The biggest crowns that hold a full period on this land. It depends on the
+ * range and the terminal size only, never on how many trees there are, so every
+ * year is drawn at the same scale and a quieter year is simply a smaller forest.
+ */
+function scaleFor(range: Exclude<Range, "day">, land: number): number {
+  const fits = (z: Zoom) => (land * 0.6) / ((z.w + z.gapX) * (z.h + z.gapY)) >= FULL[range];
+  const i = ZOOMS.findIndex(fits);
+  return i < 0 ? ZOOMS.length - 1 : i;
 }
 
 const spots = new Map<string, { x: number; y: number }[]>();
@@ -221,10 +229,17 @@ function leafStyle(sp: Species, seed: number, lit: boolean, k: number): Style {
 }
 
 function renderMap(c: Frame, g: Glyphs, s: ForestScene, b: Area): void {
+  const range = s.range === "day" ? "week" : s.range;
   const field: Area = { x: b.x + 1, y: b.y, w: b.w - 2, h: b.h };
-  const z = zoomFor(s.sessions.length, field.w * field.h);
   const seed = Math.floor(s.period.start.getTime() / 86_400_000);
-  const placed = placeTrees(field, s.sessions.length, z, seed);
+  let level = scaleFor(range, field.w * field.h);
+  let placed = placeTrees(field, s.sessions.length, ZOOMS[level]!, seed);
+  // A period busier than a full one is drawn denser rather than losing trees.
+  while (placed.length < s.sessions.length && level < ZOOMS.length - 1) {
+    level++;
+    placed = placeTrees(field, s.sessions.length, ZOOMS[level]!, seed);
+  }
+  const z = ZOOMS[level]!;
 
   for (let y = field.y; y < field.y + field.h; y++)
     for (let x = field.x; x < field.x + field.w; x++)
