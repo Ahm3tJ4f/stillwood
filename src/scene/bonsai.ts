@@ -86,8 +86,10 @@ function drawPot(c: Frame, cx: number, top: number, width: number, rows: number,
   c.put(x0 + width - 1, top, ")", S.dim);
   c.text(x0 + 1, top + 1, "\\" + "_".repeat(width - 4) + "/", S.dim);
   if (rows >= 3) {
-    c.text(x0 + 3, top + 2, "\\_/", S.dim);
-    c.text(x0 + width - 6, top + 2, "\\_/", S.dim);
+    // Narrow pots keep their feet closer to the edges, so the two never touch.
+    const inset = width >= 15 ? 3 : 2;
+    c.text(x0 + inset, top + 2, "\\_/", S.dim);
+    c.text(x0 + width - inset - 3, top + 2, "\\_/", S.dim);
   }
 }
 
