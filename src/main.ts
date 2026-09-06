@@ -17,6 +17,7 @@ import {
   type OptimizedBuffer,
   type RenderContext,
 } from "@opentui/core";
+import pkg from "../package.json" with { type: "json" };
 import { StillwoodApp } from "./app.ts";
 import { BOLD, DEFAULT, DIM, type Canvas } from "./canvas.ts";
 import type { Charset } from "./scene/look.ts";
@@ -24,7 +25,7 @@ import { renderScene } from "./scene/index.ts";
 import { HistoryStore, defaultDataDir } from "./storage.ts";
 import { acceleratedClock, monotonicClock } from "./timer.ts";
 
-const USAGE = `stillwood - a quiet focus timer where a bonsai grows while you work
+const USAGE = `stillwood ${pkg.version} - a quiet focus timer where a bonsai grows while you work
 
 usage: stillwood [options]
 
@@ -33,6 +34,7 @@ usage: stillwood [options]
   --no-color        no colours, only bold and dim (also NO_COLOR)
   --ascii           ASCII-only glyphs: plain box lines, no unicode symbols
   --data-dir <dir>  where history is kept (also STILLWOOD_DATA_DIR)
+  -v, --version     show the version
   -h, --help        show this help
 `;
 
@@ -51,6 +53,9 @@ function parseArgs(argv: string[]): Cli {
     const next = argv[i + 1];
     if (a === "-h" || a === "--help") {
       process.stdout.write(USAGE);
+      process.exit(0);
+    } else if (a === "-v" || a === "--version") {
+      process.stdout.write(`stillwood ${pkg.version}\n`);
       process.exit(0);
     } else if (a === "--minutes" && next) {
       cli.minutes = Number(next);
