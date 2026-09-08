@@ -1,4 +1,6 @@
 node_modules
+dist
+*.bun-build
 .DS_Store
 # Local editor settings
 .zed
