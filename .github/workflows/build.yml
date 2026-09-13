@@ -1,0 +1,62 @@
+name: build
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  binaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      # The native library of every platform, so that one machine can build them all.
+      - run: bun install --frozen-lockfile --os="*" --cpu="*"
+      - run: bun run build --all --pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/SHA256SUMS
+          if-no-files-found: error
+
+  # Install each binary with the real installer on its own system, then start it.
+  smoke:
+    needs: binaries
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
+          - os: macos-latest
+          - os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Install and start (macOS, Linux)
+        if: runner.os != 'Windows'
+        run: |
+          STILLWOOD_DOWNLOAD_URL="file://$PWD/dist" STILLWOOD_INSTALL_DIR="$PWD/bin" sh install.sh
+          "$PWD/bin/stillwood" --version
+      - name: Install and start (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $server = Start-Process python -ArgumentList '-m', 'http.server', '8765', '--directory', 'dist' -PassThru
+          Start-Sleep -Seconds 3
+          $env:STILLWOOD_DOWNLOAD_URL = 'http://127.0.0.1:8765'
+          $env:STILLWOOD_INSTALL_DIR = "$PWD\bin"
+          ./install.ps1
+          & "$PWD\bin\stillwood.exe" --version
+          Stop-Process $server

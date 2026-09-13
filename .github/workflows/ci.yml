@@ -23,3 +23,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
 
+  # A release branch builds and tries every binary, so you can test a release before you tag it.
+  build:
+    if: startsWith(github.ref, 'refs/heads/release/')
+    needs: check
+    uses: ./.github/workflows/build.yml
