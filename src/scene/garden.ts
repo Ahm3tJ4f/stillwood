@@ -138,7 +138,7 @@ function notice(s: GardenScene, g: Glyphs): Seg | null {
   if (s.specimen) return { text: s.specimen.periodLabel, style: S.dim };
   const forest = `${plural(s.treeCount, "tree")} in your forest`;
   if (s.phase === "completed") {
-    return { text: s.demoFactor ? "added to the sample forest, not saved" : forest, style: S.dim };
+    return { text: forest, style: S.dim };
   }
   if (s.phase === "idle" && s.treeCount > 0) return { text: forest, style: S.dim };
   return null;
@@ -185,7 +185,7 @@ export function renderGarden(c: Frame, s: GardenScene): void {
     left: specimen
       ? viewTabs(g, "forest", { garden: "show-garden", forest: "back" })
       : viewTabs(g, "garden", { forest: "forest" }),
-    right: brandTabs(s, g),
+    right: brandTabs(),
   });
   const grown = specimen ? isGrown(specimen.session) : s.phase === "completed";
   drawBonsai(

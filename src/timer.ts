@@ -11,12 +11,6 @@ export type Clock = () => number;
 
 export const monotonicClock: Clock = () => performance.now();
 
-/** Wraps a clock so time passes `factor` times faster (demo mode). */
-export function acceleratedClock(base: Clock, factor: number): Clock {
-  const origin = base();
-  return () => origin + (base() - origin) * factor;
-}
-
 export type TimerPhase = "idle" | "running" | "paused" | "completed" | "abandoned";
 
 export interface TimerSnapshot {

@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BOLD, Canvas, DEFAULT, DIM } from "../src/canvas.ts";
-import { generateDemoForest } from "../src/demo-history.ts";
+
 import { helpFor, type Mode } from "../src/input.ts";
 import { inPeriod, periodFor, type Range } from "../src/periods.ts";
 import { drawBonsai } from "../src/scene/bonsai.ts";
@@ -24,6 +24,7 @@ import { glyphsFor, S } from "../src/scene/look.ts";
 import { SPECIES, type Species } from "../src/species.ts";
 import { formatClock } from "../src/timer.ts";
 import { stageFor } from "../src/tree.ts";
+import { sampleHistory } from "./sample-history.ts";
 
 const OUT = "assets";
 /** Tango, a common terminal palette, on a dark background. */
@@ -140,7 +141,7 @@ function garden(extra: Partial<GardenScene>): GardenScene {
 
 function forest(range: Range, width = 80, height = 24) {
   const period = periodFor(range, 0, NOW);
-  const sessions = generateDemoForest(NOW)
+  const sessions = sampleHistory(NOW)
     .filter((s) => inPeriod(s.completedAt, period))
     .sort((a, b) => a.completedAt.localeCompare(b.completedAt));
   const mode: Mode = range === "day" ? "forest" : "map";

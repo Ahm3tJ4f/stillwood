@@ -4,7 +4,6 @@
  * the whole interaction model can be driven from tests.
  */
 
-import { generateDemoForest } from "./demo-history.ts";
 import { helpFor, keyToAction, type Action, type KeyLike, type Mode } from "./input.ts";
 import { sameDay } from "./format.ts";
 import { inPeriod, offsetFor, periodFor, RANGES, type Range } from "./periods.ts";
@@ -29,14 +28,12 @@ import {
 } from "./timer.ts";
 
 export interface AppOptions {
-  /** Clock the focus timer runs on (accelerated in demo mode). */
+  /** Clock the focus timer runs on. */
   timerClock?: Clock;
   /** Real monotonic clock for animation. */
   animClock?: Clock;
   wallClock?: () => Date;
   store?: HistoryBackend | null;
-  /** Demo: time runs this many times faster, a sample forest is shown, and nothing is saved. */
-  demoFactor?: number;
   charset?: Charset;
   durationMin?: number;
   random?: () => number;
@@ -65,7 +62,6 @@ export class StillwoodApp {
   private readonly animClock: Clock;
   private readonly wallClock: () => Date;
   private readonly store: HistoryBackend | null;
-  private readonly demoFactor: number | undefined;
   private readonly charset: Charset;
   private readonly random: () => number;
   private presets: number[];
@@ -84,7 +80,6 @@ export class StillwoodApp {
     this.animClock = opts.animClock ?? monotonicClock;
     this.wallClock = opts.wallClock ?? (() => new Date());
     this.store = opts.store ?? null;
-    this.demoFactor = opts.demoFactor;
     this.charset = opts.charset ?? "unicode";
     this.random = opts.random ?? Math.random;
 
@@ -98,10 +93,7 @@ export class StillwoodApp {
     this.seed = this.newSeed();
     this.lastAnim = this.bornAt = this.animClock();
 
-    if (this.demoFactor) {
-      // A year of sample trees, in memory only.
-      this.sessions = generateDemoForest(this.wallClock());
-    } else if (this.store) {
+    if (this.store) {
       const loaded = this.store.load();
       this.sessions = loaded.sessions;
       if (loaded.warning) this.flash(loaded.warning);
@@ -327,9 +319,9 @@ export class StillwoodApp {
     });
   }
 
-  /** Add a tree to the forest; persisted unless in demo mode. */
+  /** Add a tree to the forest and save it. */
   private record(session: CompletedSession): void {
-    if (this.demoFactor || !this.store) {
+    if (!this.store) {
       this.sessions = [...this.sessions, session];
       return;
     }
@@ -349,7 +341,7 @@ export class StillwoodApp {
 
     if (this.timer.update()) this.onCompleted(now);
 
-    // Ease the drawn tree toward the true progress so growth (and demo jumps) animate gently.
+    // Ease the drawn tree toward the true progress so growth always animates gently.
     const target = this.timer.progress();
     if (target < this.displayed - 0.02 && this.timer.phase !== "abandoned") this.displayed = target;
     else this.displayed += (target - this.displayed) * (1 - Math.exp(-dt / 0.7));
@@ -389,7 +381,6 @@ export class StillwoodApp {
       charset: this.charset,
       help: helpFor(this.mode()),
       notice: this.notice?.text,
-      demoFactor: this.demoFactor,
     };
     const list = this.periodSessions();
     const selected = Math.max(0, Math.min(list.length - 1, this.forestSelected));
@@ -431,7 +422,6 @@ export class StillwoodApp {
         period,
         hasLater: this.periodOffset < 0,
         today: this.wallClock(),
-        sample: Boolean(this.demoFactor),
       };
       return forest;
     }

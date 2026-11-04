@@ -438,7 +438,6 @@ export function renderForest(c: Frame, s: ForestScene): void {
     bottomLeft: s.notice
       ? [{ segs: [{ text: clip(s.notice, s.width - 24, g.ellipsis), style: S.warn }] }]
       : [],
-    bottomRight: s.sample ? [{ segs: [{ text: "sample forest", style: S.wait }] }] : [],
   });
   const x0 = 2;
   const x1 = s.width - 2;

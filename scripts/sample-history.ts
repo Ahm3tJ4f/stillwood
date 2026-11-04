@@ -1,15 +1,15 @@
 /**
- * Sample history for demo mode: roughly a year of believable sessions (busy
- * weekdays, quiet weekends, a holiday gap, some abandoned attempts). It only
- * ever lives in memory and is never written to disk.
+ * A sample history for the README images: roughly a year of believable sessions
+ * (busy weekdays, quiet weekends, a holiday gap, some sessions that were ended
+ * early).
  */
 
-import { mulberry32 } from "./random.ts";
-import type { CompletedSession } from "./session.ts";
+import { mulberry32 } from "../src/random.ts";
+import type { CompletedSession } from "../src/session.ts";
 
 const DURATIONS = [25, 25, 25, 25, 50, 50, 15, 45, 30, 60, 90, 10];
 
-export function generateDemoForest(now: Date, days = 400, seed = 2026): CompletedSession[] {
+export function sampleHistory(now: Date, days = 400, seed = 2026): CompletedSession[] {
   const rnd = mulberry32(seed);
   const out: CompletedSession[] = [];
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -47,7 +47,7 @@ export function generateDemoForest(now: Date, days = 400, seed = 2026): Complete
       const progress = abandoned ? 0.08 + rnd() * 0.8 : 1;
       const end = new Date(start.getTime() + minutes * 60000 * progress);
       out.push({
-        id: `demo-${back}-${i}`,
+        id: `sample-${back}-${i}`,
         startedAt: start.toISOString(),
         completedAt: end.toISOString(),
         durationMs: minutes * 60000,

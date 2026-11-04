@@ -23,14 +23,13 @@ import { BOLD, DEFAULT, DIM, type Canvas } from "./canvas.ts";
 import type { Charset } from "./scene/look.ts";
 import { renderScene } from "./scene/index.ts";
 import { HistoryStore, defaultDataDir } from "./storage.ts";
-import { acceleratedClock, monotonicClock } from "./timer.ts";
+import { monotonicClock } from "./timer.ts";
 
 const USAGE = `stillwood ${pkg.version} - a quiet focus timer where a bonsai grows while you work
 
 usage: stillwood [options]
 
   --minutes <n>     initial focus length in minutes (default 25)
-  --demo [factor]   accelerated demo; time runs <factor>x faster (default 60). Nothing is saved.
   --no-color        no colours, only bold and dim (also NO_COLOR)
   --ascii           ASCII-only glyphs: plain box lines, no unicode symbols
   --data-dir <dir>  where history is kept (also STILLWOOD_DATA_DIR)
@@ -40,7 +39,6 @@ usage: stillwood [options]
 
 interface Cli {
   minutes?: number;
-  demo?: number;
   color: boolean;
   ascii: boolean;
   dataDir?: string;
@@ -60,11 +58,6 @@ function parseArgs(argv: string[]): Cli {
     } else if (a === "--minutes" && next) {
       cli.minutes = Number(next);
       i++;
-    } else if (a === "--demo") {
-      if (next && /^\d+(\.\d+)?$/.test(next)) {
-        cli.demo = Number(next);
-        i++;
-      } else cli.demo = 60;
     } else if (a === "--no-color") cli.color = false;
     else if (a === "--ascii") cli.ascii = true;
     else if (a === "--data-dir" && next) {
@@ -79,7 +72,6 @@ function parseArgs(argv: string[]): Cli {
     process.stderr.write("--minutes must be between 1 and 600\n");
     process.exit(2);
   }
-  if (cli.demo !== undefined && !(cli.demo >= 1)) cli.demo = 60;
   return cli;
 }
 
@@ -153,13 +145,11 @@ class SceneView extends Renderable {
 async function main(): Promise<void> {
   const cli = parseArgs(process.argv.slice(2));
   const charset: Charset = cli.ascii || process.env.STILLWOOD_ASCII === "1" ? "ascii" : "unicode";
-  const demo = cli.demo;
 
   const app = new StillwoodApp({
-    timerClock: demo ? acceleratedClock(monotonicClock, demo) : monotonicClock,
+    timerClock: monotonicClock,
     animClock: monotonicClock,
     store: new HistoryStore(cli.dataDir ?? defaultDataDir()),
-    demoFactor: demo,
     charset,
     durationMin: cli.minutes,
   });

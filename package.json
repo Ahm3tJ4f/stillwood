@@ -32,7 +32,6 @@
   "type": "module",
   "scripts": {
     "start": "bun src/main.ts",
-    "demo": "bun src/main.ts --demo 60",
     "build": "bun scripts/build.ts",
     "assets": "bun scripts/assets.ts",
     "check": "vp check",

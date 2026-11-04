@@ -14,7 +14,6 @@ export interface CommonScene {
   charset: Charset;
   help: HelpItem[];
   notice?: string;
-  demoFactor?: number;
 }
 
 export interface GardenScene extends CommonScene {
@@ -48,8 +47,6 @@ export interface ForestScene extends CommonScene {
   hasLater: boolean;
   /** Today, to mark it and to leave future days empty. */
   today: Date;
-  /** Sample forest in demo mode. */
-  sample?: boolean;
 }
 
 export type Scene = GardenScene | ForestScene;

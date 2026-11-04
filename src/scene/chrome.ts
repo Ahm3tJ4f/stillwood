@@ -45,14 +45,9 @@ export function viewTabs(
   return [tab(1, "garden", actions.garden), tab(2, "forest", actions.forest)];
 }
 
-/** The demo badge and the app name, for the right end of the top border. */
-export function brandTabs(s: CommonScene, g: Glyphs): Tab[] {
-  const tabs: Tab[] = [];
-  if (s.demoFactor) {
-    tabs.push({ segs: [{ text: `demo x${s.demoFactor} ${g.dot} not saved`, style: S.wait }] });
-  }
-  tabs.push({ segs: [{ text: "stillwood", style: S.dim }] });
-  return tabs;
+/** The app name, for the right end of the top border. */
+export function brandTabs(): Tab[] {
+  return [{ segs: [{ text: "stillwood", style: S.dim }] }];
 }
 
 /** A species' name, in its own leaf colour. */
