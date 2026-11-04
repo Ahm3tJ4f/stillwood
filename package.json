@@ -1,6 +1,6 @@
 {
   "name": "stillwood",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A quiet focus timer for the terminal: an ASCII bonsai grows while you work.",
   "keywords": [
     "ascii-art",
