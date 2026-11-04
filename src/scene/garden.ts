@@ -79,7 +79,7 @@ function statusLine(s: GardenScene, g: Glyphs): [Seg[], Seg[]] {
           { text: g.idle, style: S.dim },
           sp,
           { text: `ready to plant ${s.species.article} ` },
-          speciesSeg(s.species),
+          { ...speciesSeg(s.species), hit: { action: "species-next" } },
         ],
         s.todayCount ? [{ text: `${plural(s.todayCount, "tree")} today`, style: S.dim }] : [],
       ];

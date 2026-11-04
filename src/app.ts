@@ -11,7 +11,7 @@ import { easeInOut, smoothstep } from "./random.ts";
 import { hitAt } from "./scene/index.ts";
 import type { Charset } from "./scene/look.ts";
 import type { ForestScene, Scene } from "./scene/types.ts";
-import { pickSpecies, speciesOf } from "./species.ts";
+import { nextSpecies, pickSpecies, speciesOf, type Species } from "./species.ts";
 import {
   isGrown,
   newSessionId,
@@ -36,6 +36,8 @@ export interface AppOptions {
   store?: HistoryBackend | null;
   charset?: Charset;
   durationMin?: number;
+  /** Grow this species every time; without it, each seed picks its own. */
+  species?: Species;
   random?: () => number;
 }
 
@@ -64,6 +66,8 @@ export class StillwoodApp {
   private readonly store: HistoryBackend | null;
   private readonly charset: Charset;
   private readonly random: () => number;
+  /** The species chosen with `t` or --species; null lets the seed pick. */
+  private chosen: Species | null;
   private presets: number[];
   private presetIndex: number;
   private displayed = 0;
@@ -82,6 +86,7 @@ export class StillwoodApp {
     this.store = opts.store ?? null;
     this.charset = opts.charset ?? "unicode";
     this.random = opts.random ?? Math.random;
+    this.chosen = opts.species ?? null;
 
     const wanted =
       opts.durationMin && opts.durationMin > 0 ? opts.durationMin : DEFAULT_DURATION_MIN;
@@ -102,6 +107,11 @@ export class StillwoodApp {
 
   private newSeed(): number {
     return 1 + Math.floor(this.random() * 999_999);
+  }
+
+  /** The species of the tree in the garden. */
+  get species(): Species {
+    return this.chosen ?? pickSpecies(this.seed);
   }
 
   private flash(text: string): void {
@@ -229,6 +239,9 @@ export class StillwoodApp {
         this.timer.setDuration(this.durationMin * 60000);
         break;
       }
+      case "species-next":
+        if (phase === "idle") this.chosen = nextSpecies(this.species);
+        break;
       case "forest":
         this.view = "forest";
         this.periodOffset = 0;
@@ -313,7 +326,7 @@ export class StillwoodApp {
       completedAt: this.wallClock().toISOString(),
       durationMs: this.timer.durationMs,
       seed: this.seed,
-      species: pickSpecies(this.seed).id,
+      species: this.species.id,
       status: "abandoned",
       progress: Math.round(progress * 1000) / 1000,
     });
@@ -360,7 +373,7 @@ export class StillwoodApp {
       completedAt: this.wallClock().toISOString(),
       durationMs: this.timer.durationMs,
       seed: this.seed,
-      species: pickSpecies(this.seed).id,
+      species: this.species.id,
       status: "completed",
       progress: 1,
     });
@@ -431,7 +444,7 @@ export class StillwoodApp {
       view: "garden",
       progress: this.displayed,
       seed: this.seed,
-      species: pickSpecies(this.seed),
+      species: this.species,
       phase: snap.phase,
       durationMs: snap.durationMs,
       remainingMs: snap.remainingMs,

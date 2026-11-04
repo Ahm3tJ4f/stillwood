@@ -111,6 +111,17 @@ export function pickSpecies(seed: number): Species {
   return SPECIES[0]!;
 }
 
+/** The species with this id or name ("spruce" or "blue spruce"), if there is one. */
+export function findSpecies(key: string): Species | undefined {
+  const k = key.trim().toLowerCase();
+  return SPECIES.find((s) => s.id === k || s.name === k);
+}
+
+/** The species after this one in the list, back to the first after the last. */
+export function nextSpecies(s: Species): Species {
+  return SPECIES[(SPECIES.indexOf(s) + 1) % SPECIES.length]!;
+}
+
 /** A tree's species: the stored one, or the one its seed grows into. */
 export function speciesOf(s: Pick<CompletedSession, "seed" | "species">): Species {
   return SPECIES.find((x) => x.id === s.species) ?? pickSpecies(s.seed);
