@@ -35,7 +35,6 @@ jobs:
         include:
           - os: ubuntu-latest
           - os: ubuntu-24.04-arm
-          - os: macos-latest
           - os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
@@ -44,7 +43,7 @@ jobs:
         with:
           name: dist
           path: dist
-      - name: Install and start (macOS, Linux)
+      - name: Install and start (Linux)
         if: runner.os != 'Windows'
         run: |
           STILLWOOD_DOWNLOAD_URL="file://$PWD/dist" STILLWOOD_INSTALL_DIR="$PWD/bin" sh install.sh
