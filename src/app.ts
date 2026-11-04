@@ -11,6 +11,7 @@ import { easeInOut, smoothstep } from "./random.ts";
 import { hitAt } from "./scene/index.ts";
 import type { Charset } from "./scene/look.ts";
 import type { ForestScene, Scene } from "./scene/types.ts";
+import type { Cue } from "./sound.ts";
 import { nextSpecies, pickSpecies, speciesOf, type Species } from "./species.ts";
 import {
   isGrown,
@@ -39,6 +40,8 @@ export interface AppOptions {
   /** Grow this species every time; without it, each seed picks its own. */
   species?: Species;
   random?: () => number;
+  /** Plays the sound for the end of a session. */
+  sound?: (cue: Cue) => void;
 }
 
 const NOTICE_MS = 6000;
@@ -66,6 +69,7 @@ export class StillwoodApp {
   private readonly store: HistoryBackend | null;
   private readonly charset: Charset;
   private readonly random: () => number;
+  private readonly sound: (cue: Cue) => void;
   /** The species chosen with `t` or --species; null lets the seed pick. */
   private chosen: Species | null;
   private presets: number[];
@@ -86,6 +90,7 @@ export class StillwoodApp {
     this.store = opts.store ?? null;
     this.charset = opts.charset ?? "unicode";
     this.random = opts.random ?? Math.random;
+    this.sound = opts.sound ?? (() => {});
     this.chosen = opts.species ?? null;
 
     const wanted =
@@ -221,7 +226,8 @@ export class StillwoodApp {
         break;
       case "confirm":
         if (this.prompt) {
-          this.abandonSession();
+          // On quit the app closes at once, so the sound would play after it is gone.
+          if (this.abandonSession() && this.prompt === "abandon") this.sound("fail");
           if (this.prompt === "quit") this.quitRequested = true;
           this.prompt = null;
         }
@@ -313,13 +319,13 @@ export class StillwoodApp {
     }
   }
 
-  /** Stop the session and keep what grew as an unfinished sapling. */
-  private abandonSession(): void {
+  /** Stop the session and keep what grew as an unfinished sapling. Returns false if no session ran. */
+  private abandonSession(): boolean {
     const elapsed = this.timer.elapsedMs();
     const progress = this.timer.progress();
-    if (!this.timer.abandon()) return;
+    if (!this.timer.abandon()) return false;
     this.kept = elapsed >= MIN_UNFINISHED_MS;
-    if (!this.kept) return;
+    if (!this.kept) return true;
     this.record({
       id: newSessionId(),
       startedAt: (this.sessionStartedAt ?? this.wallClock()).toISOString(),
@@ -330,6 +336,7 @@ export class StillwoodApp {
       status: "abandoned",
       progress: Math.round(progress * 1000) / 1000,
     });
+    return true;
   }
 
   /** Add a tree to the forest and save it. */
@@ -377,6 +384,7 @@ export class StillwoodApp {
       status: "completed",
       progress: 1,
     });
+    this.sound("success");
   }
 
   /** Progress as currently drawn (smoothed). */

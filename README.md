@@ -106,8 +106,19 @@ You can also click a tree, a tab or a key in a panel border.
 | `--species <id>`   | Always grow this species: `oak`, `pine`, `maple`, `cherry`, `birch`, `spruce` or `jacaranda`. |
 | `--no-color`       | Show no colors. The `NO_COLOR` variable has the same effect.                                  |
 | `--ascii`          | Use only ASCII characters, for fonts without box or tree symbols.                             |
+| `--no-sound`       | Play no sounds. The `STILLWOOD_NO_SOUND=1` variable has the same effect.                      |
 | `--data-dir <dir>` | Keep the history in a different directory.                                                    |
 | `-v`, `--version`  | Show the version.                                                                             |
+
+## Sounds
+
+When a tree blooms, Stillwood plays a short sound. When you end a session, it plays a different
+sound. Stillwood uses the player of your system: `afplay` on macOS, `pw-play`, `paplay` or `aplay`
+on Linux, and PowerShell on Windows. If there is no player, Stillwood plays no sound.
+
+The sounds are `up` and `down` from
+[Stefan's Notification Sounds](https://freesound.org/people/stwime/packs/30719/) by stwime, with the
+[CC0](https://creativecommons.org/publicdomain/zero/1.0/) license.
 
 ## History
 
