@@ -33,24 +33,44 @@ bunx stillwood
 
 You can also download a binary from the [releases page](https://github.com/Ahm3tJ4f/stillwood/releases).
 
-## Start a session
+## Walkthrough
 
-1. Type `stillwood` in a terminal.
-2. Press `←` or `→` to set the length of the session.
-3. Press `space` to plant the seed.
-4. Work until the timer stops.
+The GIFs show the real app. In them, time goes faster.
 
-To see the app at high speed, type `stillwood --demo`. The demo does not save trees.
+### 1. Plant a seed
 
-## Screenshots
+Type `stillwood` in a terminal. Press `←` or `→` to set the length of the session. Press `space`
+to plant the seed.
 
-|                 The tree grows                 |                 The tree is complete                  |
-| :--------------------------------------------: | :---------------------------------------------------: |
-| ![A maple grows in its pot](assets/garden.png) | ![A cherry tree with white flowers](assets/grown.png) |
-|         **Day:** the trees of one day          |            **Week:** the forest from above            |
-|    ![The trees of one day](assets/day.png)     |      ![The forest of one week](assets/week.png)       |
-|   **Month:** each tree has its species color   |          **Year:** one symbol for each tree           |
-|  ![The forest of one month](assets/month.png)  |      ![The forest of one year](assets/year.png)       |
+![Set the length of the session and plant the seed](assets/plant.gif)
+
+### 2. Focus
+
+Work while the timer counts down. The tree grows during the session. When the time is done, the
+tree blooms.
+
+![The tree grows and blooms](assets/grow.gif)
+
+### 3. Stop the timer or end the session
+
+Press `space` to stop the timer. Press `space` again to continue. Press `a` to end the session. A
+tree from a session that you end stays small and gray.
+
+![Stop the timer, then end the session](assets/stop.gif)
+
+### 4. Look at your forest
+
+Press `f`. The forest opens on today, with your trees in a row. Press `←` and `→` to select a tree.
+Press `enter` to see the tree grow again.
+
+![The trees of one day](assets/forest.gif)
+
+### 5. See the week, the month and the year
+
+Press `w`, `m` or `y` to see the forest of the week, the month or the year from above. Press `←`
+and `→` to go to an earlier or a later period.
+
+![The forest of the week, the month and the year](assets/maps.gif)
 
 ## Trees
 
@@ -80,14 +100,13 @@ You can also click a tree, a tab or a key in a panel border.
 
 ## Options
 
-| Option             | Function                                                                       |
-| ------------------ | ------------------------------------------------------------------------------ |
-| `--minutes <n>`    | Set the length of the first session. The default is 25.                        |
-| `--demo [speed]`   | Show a sample forest. Time goes 60 times faster. The demo does not save trees. |
-| `--no-color`       | Show no colors. The `NO_COLOR` variable has the same effect.                   |
-| `--ascii`          | Use only ASCII characters, for fonts without box or tree symbols.              |
-| `--data-dir <dir>` | Keep the history in a different directory.                                     |
-| `-v`, `--version`  | Show the version.                                                              |
+| Option             | Function                                                          |
+| ------------------ | ----------------------------------------------------------------- |
+| `--minutes <n>`    | Set the length of the first session. The default is 25.           |
+| `--no-color`       | Show no colors. The `NO_COLOR` variable has the same effect.      |
+| `--ascii`          | Use only ASCII characters, for fonts without box or tree symbols. |
+| `--data-dir <dir>` | Keep the history in a different directory.                        |
+| `-v`, `--version`  | Show the version.                                                 |
 
 ## History
 
@@ -114,7 +133,6 @@ bun start
 
 | Command          | Function                                          |
 | ---------------- | ------------------------------------------------- |
-| `bun run demo`   | Start the demo.                                   |
 | `bun run check`  | Do a check of the format, the lint and the types. |
 | `bun run build`  | Make a binary for this computer in `dist/`.       |
 | `bun run assets` | Make the images of this README again.             |
@@ -128,9 +146,7 @@ GitHub Actions then builds the binaries for macOS, Linux and Windows and publish
 
 ## Credits
 
-The tree comes from an idea in [cbonsai](https://gitlab.com/jallbrit/cbonsai). The panels use the
-style of [btop](https://github.com/aristocratos/btop). The terminal interface uses
-[OpenTUI](https://opentui.com).
+The tree comes from an idea in [cbonsai](https://gitlab.com/jallbrit/cbonsai).
 
 ## License
 

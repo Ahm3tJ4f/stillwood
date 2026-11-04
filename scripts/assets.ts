@@ -1,10 +1,11 @@
 /**
  * Draws the README images with the app's own renderer.
  *
- *   assets/banner.svg   an animated banner: trees of six species grow and bloom
- *   assets/*.png        screenshots of the garden and the forest
+ *   assets/banner.svg    an animated banner: trees of six species grow and bloom
+ *   assets/*.gif         a walkthrough: the real app, keys pressed, time at high speed
+ *   assets/species.png   the seven species
  *
- * The screenshots need Google Chrome, Chromium or Brave.
+ * Needs Google Chrome, Chromium or Brave for the pictures and ffmpeg for the GIFs.
  *
  *   bun run assets
  */
@@ -12,15 +13,15 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { StillwoodApp } from "../src/app.ts";
 import { BOLD, Canvas, DEFAULT, DIM } from "../src/canvas.ts";
-
-import { helpFor, type Mode } from "../src/input.ts";
-import { inPeriod, periodFor, type Range } from "../src/periods.ts";
+import { mulberry32 } from "../src/random.ts";
 import { drawBonsai } from "../src/scene/bonsai.ts";
 import { speciesSeg } from "../src/scene/chrome.ts";
 import { centerSegs, meter, panel, writeSegs, type Seg } from "../src/scene/frame.ts";
-import { renderScene, type GardenScene, type HitTarget } from "../src/scene/index.ts";
+import { renderScene, type HitTarget } from "../src/scene/index.ts";
 import { glyphsFor, S } from "../src/scene/look.ts";
+import type { CompletedSession, HistoryBackend } from "../src/session.ts";
 import { SPECIES, type Species } from "../src/species.ts";
 import { formatClock } from "../src/timer.ts";
 import { stageFor } from "../src/tree.ts";
@@ -51,11 +52,13 @@ const BG = "#16181a";
 const NOW = new Date(2026, 8, 23, 18, 0);
 const g = glyphsFor("unicode");
 
+type Frame = { c: Canvas<unknown>; ms: number };
+
 const byId = (id: string) => SPECIES.find((s) => s.id === id)!;
 const color = (fg: number) => (fg === DEFAULT ? FG : PALETTE[fg]!);
 const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-// -- screenshots ---------------------------------------------------------------
+// -- pictures --------------------------------------------------------------------
 
 function html(c: Canvas<unknown>): string {
   let body = "";
@@ -88,12 +91,13 @@ function browser(): string {
     "/usr/bin/chromium-browser",
   ];
   const found = candidates.find((p) => existsSync(p));
-  if (!found) throw new Error("screenshots need Google Chrome, Chromium or Brave");
+  if (!found) throw new Error("the pictures need Google Chrome, Chromium or Brave");
   return found;
 }
 
-async function screenshot(name: string, c: Canvas<unknown>): Promise<void> {
-  const dir = mkdtempSync(join(tmpdir(), "stillwood-assets-"));
+/** Take a screenshot of one canvas. */
+async function shoot(c: Canvas<unknown>, file: string, scale: number): Promise<void> {
+  const dir = mkdtempSync(join(tmpdir(), "stillwood-shot-"));
   const page = join(dir, "page.html");
   writeFileSync(page, html(c));
   // One column of 16px Menlo is 9.63px; the page adds 14px and 12px of padding.
@@ -105,60 +109,159 @@ async function screenshot(name: string, c: Canvas<unknown>): Promise<void> {
       "--headless=new",
       "--disable-gpu",
       "--hide-scrollbars",
-      "--force-device-scale-factor=2",
+      `--force-device-scale-factor=${scale}`,
       `--window-size=${width},${height}`,
-      `--screenshot=${join(process.cwd(), OUT, `${name}.png`)}`,
+      `--screenshot=${file}`,
       `file://${page}`,
     ],
     { stdout: "ignore", stderr: "ignore" },
   );
   await proc.exited;
   rmSync(dir, { recursive: true, force: true });
-  console.log(`  ${OUT}/${name}.png`);
 }
 
-function garden(extra: Partial<GardenScene>): GardenScene {
-  return {
-    view: "garden",
-    width: 80,
-    height: 24,
-    time: 2,
-    charset: "unicode",
-    help: helpFor("running"),
-    progress: 0.6,
-    seed: 11,
-    species: byId("maple"),
-    phase: "running",
-    durationMs: 25 * 60000,
-    remainingMs: 10 * 60000,
-    prompt: null,
-    celebrate: 0,
-    treeCount: 41,
-    todayCount: 2,
-    ...extra,
-  };
+/**
+ * An animated GIF from frames. Equal frames in a row become one longer frame,
+ * and ffmpeg shares one palette and stores only what changes between frames.
+ */
+async function gif(name: string, frames: Frame[]): Promise<void> {
+  const same = (a: Canvas<unknown>, b: Canvas<unknown>) =>
+    a.ch.join("") === b.ch.join("") &&
+    a.fg.join() === b.fg.join() &&
+    a.attr.join() === b.attr.join();
+  const merged: Frame[] = [];
+  for (const f of frames) {
+    const last = merged.at(-1);
+    if (last && same(last.c, f.c)) last.ms += f.ms;
+    else merged.push({ ...f });
+  }
+  const dir = mkdtempSync(join(tmpdir(), "stillwood-gif-"));
+  const files = merged.map((_, i) => join(dir, `${String(i).padStart(3, "0")}.png`));
+  // A few browsers at a time.
+  for (let i = 0; i < merged.length; i += 6) {
+    await Promise.all(merged.slice(i, i + 6).map((f, k) => shoot(f.c, files[i + k]!, 1.25)));
+  }
+  const list = merged.map((f, i) => `file '${files[i]}'\nduration ${(f.ms / 1000).toFixed(2)}`);
+  writeFileSync(join(dir, "list.txt"), `${list.join("\n")}\nfile '${files.at(-1)}'\n`);
+  const proc = Bun.spawn(
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "concat",
+      "-safe",
+      "0",
+      "-i",
+      join(dir, "list.txt"),
+      "-vf",
+      "split[a][b];[a]palettegen=max_colors=96:stats_mode=full[p];[b][p]paletteuse=dither=none:diff_mode=rectangle",
+      "-fps_mode",
+      "vfr",
+      "-loop",
+      "0",
+      join(OUT, `${name}.gif`),
+    ],
+    { stdout: "inherit", stderr: "inherit" },
+  );
+  if ((await proc.exited) !== 0) throw new Error("ffmpeg could not make the GIF");
+  rmSync(dir, { recursive: true, force: true });
+  console.log(`  ${OUT}/${name}.gif  (${merged.length} frames)`);
 }
 
-function forest(range: Range, width = 80, height = 24) {
-  const period = periodFor(range, 0, NOW);
-  const sessions = sampleHistory(NOW)
-    .filter((s) => inPeriod(s.completedAt, period))
-    .sort((a, b) => a.completedAt.localeCompare(b.completedAt));
-  const mode: Mode = range === "day" ? "forest" : "map";
-  return renderScene({
-    view: "forest",
-    width,
-    height,
-    time: 2,
-    charset: "unicode",
-    help: helpFor(mode),
-    sessions,
-    selected: sessions.length - 1,
-    range,
-    period,
-    hasLater: false,
-    today: NOW,
-  });
+// -- the walkthrough ---------------------------------------------------------------
+
+/** Drives the real app: presses keys and moves its clocks, one frame per step. */
+class Take {
+  focus = 0;
+  anim = 0;
+  frames: Frame[] = [];
+  readonly app: StillwoodApp;
+
+  constructor(history: CompletedSession[], seed: number) {
+    const store: HistoryBackend = {
+      load: () => ({ sessions: [...history] }),
+      append: (s) => {
+        history.push(s);
+        return [...history];
+      },
+    };
+    this.app = new StillwoodApp({
+      timerClock: () => this.focus,
+      animClock: () => this.anim,
+      wallClock: () => new Date(NOW.getTime() + this.focus),
+      store,
+      random: mulberry32(seed),
+    });
+  }
+
+  /** Show the screen for `ms`, while `focus` ms of the session go by. */
+  hold(ms: number, focus = 0): void {
+    this.focus += focus;
+    this.anim += ms;
+    this.app.tick();
+    this.frames.push({ c: renderScene(this.app.scene(80, 24)), ms });
+  }
+
+  press(name: string, ms = 700): void {
+    this.app.handleKey({ name, sequence: name.length === 1 ? name : undefined });
+    this.hold(ms);
+  }
+
+  cut(): Frame[] {
+    const out = this.frames;
+    this.frames = [];
+    return out;
+  }
+}
+
+async function walkthrough(): Promise<void> {
+  const take = new Take(sampleHistory(NOW), 66);
+
+  // 1. Set the length and plant the seed.
+  take.hold(1400);
+  for (const key of ["left", "left", "right", "right", "right", "left"]) take.press(key, 650);
+  take.press("space", 500);
+  for (let i = 0; i < 5; i++) take.hold(260, 15_000);
+  await gif("plant", take.cut());
+
+  // 2. The tree grows while the timer counts down, then it blooms.
+  for (let i = 0; i < 56; i++) take.hold(130, (25 * 60000) / 56);
+  for (let i = 0; i < 8; i++) take.hold(320);
+  take.hold(1800);
+  await gif("grow", take.cut());
+
+  // 3. Pause, then end a session early: that tree stays small and gray.
+  take.press("space", 900);
+  take.press("space", 300);
+  for (let i = 0; i < 10; i++) take.hold(200, 45_000);
+  take.press("space", 1500);
+  take.press("space", 500);
+  for (let i = 0; i < 4; i++) take.hold(200, 45_000);
+  take.press("a", 1700);
+  take.press("y", 2400);
+  await gif("stop", take.cut());
+
+  // 4. The forest opens on today. Pick a tree and watch it grow again.
+  take.press("f", 1600);
+  for (const key of ["left", "left", "left"]) take.press(key, 750);
+  take.press("return", 150);
+  for (let i = 0; i < 16; i++) take.hold(300);
+  take.hold(1200);
+  take.press("escape", 1400);
+  await gif("forest", take.cut());
+
+  // 5. Zoom out to the week, the month and the year, and move through time.
+  take.press("w", 1700);
+  take.press("left", 1300);
+  take.press("right", 1000);
+  take.press("m", 1700);
+  take.press("y", 1900);
+  take.press("left", 1300);
+  take.press("right", 1000);
+  take.press("d", 1300);
+  await gif("maps", take.cut());
 }
 
 /** All seven species side by side, grown, each with its name under its pot. */
@@ -186,7 +289,7 @@ function lineup(): Canvas<HitTarget> {
   return c;
 }
 
-// -- the animated banner --------------------------------------------------------
+// -- the animated banner ------------------------------------------------------------
 
 const WORDMARK = [
   "     _   _ _ _                         _",
@@ -250,7 +353,7 @@ function bannerFrame(sp: Species, seed: number, progress: number, bloom: number,
  * in which it shows, so the file stays small. Runs of glyphs are stretched to
  * their exact cell width, so the art lines up in any monospace font.
  */
-function animatedSvg(frames: { c: Canvas<unknown>; ms: number }[]): string {
+function animatedSvg(frames: Frame[]): string {
   const first = frames[0]!.c;
   const W = first.width;
   const H = first.height;
@@ -338,7 +441,7 @@ function animatedSvg(frames: { c: Canvas<unknown>; ms: number }[]): string {
 }
 
 function banner(): string {
-  const frames: { c: Canvas<unknown>; ms: number }[] = [];
+  const frames: Frame[] = [];
   let tick = 0;
   for (const [id, seed] of SHOWCASE) {
     const sp = byId(id);
@@ -355,22 +458,6 @@ function banner(): string {
 mkdirSync(OUT, { recursive: true });
 writeFileSync(join(OUT, "banner.svg"), banner());
 console.log(`  ${OUT}/banner.svg`);
-await screenshot("garden", renderScene(garden({})));
-await screenshot(
-  "grown",
-  renderScene(
-    garden({
-      phase: "completed",
-      progress: 1,
-      celebrate: 1,
-      species: byId("cherry"),
-      seed: 23,
-      help: helpFor("completed"),
-    }),
-  ),
-);
-await screenshot("species", lineup());
-await screenshot("day", forest("day"));
-await screenshot("week", forest("week"));
-await screenshot("month", forest("month"));
-await screenshot("year", forest("year"));
+await shoot(lineup(), join(process.cwd(), OUT, "species.png"), 2);
+console.log(`  ${OUT}/species.png`);
+await walkthrough();
