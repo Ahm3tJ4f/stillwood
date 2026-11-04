@@ -22,6 +22,7 @@ import { StillwoodApp } from "./app.ts";
 import { BOLD, DEFAULT, DIM, type Canvas } from "./canvas.ts";
 import type { Charset } from "./scene/look.ts";
 import { renderScene } from "./scene/index.ts";
+import { SoundPlayer } from "./sound.ts";
 import { findSpecies, SPECIES, type Species } from "./species.ts";
 import { HistoryStore, defaultDataDir } from "./storage.ts";
 import { monotonicClock } from "./timer.ts";
@@ -34,6 +35,7 @@ usage: stillwood [options]
   --species <id>    always grow this tree type (${SPECIES.map((s) => s.id).join(", ")})
   --no-color        no colours, only bold and dim (also NO_COLOR)
   --ascii           ASCII-only glyphs: plain box lines, no unicode symbols
+  --no-sound        no sound when a session ends (also STILLWOOD_NO_SOUND=1)
   --data-dir <dir>  where history is kept (also STILLWOOD_DATA_DIR)
   -v, --version     show the version
   -h, --help        show this help
@@ -44,11 +46,12 @@ interface Cli {
   species?: Species;
   color: boolean;
   ascii: boolean;
+  sound: boolean;
   dataDir?: string;
 }
 
 function parseArgs(argv: string[]): Cli {
-  const cli: Cli = { ascii: false, color: true };
+  const cli: Cli = { ascii: false, color: true, sound: true };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     const next = argv[i + 1];
@@ -72,6 +75,7 @@ function parseArgs(argv: string[]): Cli {
       i++;
     } else if (a === "--no-color") cli.color = false;
     else if (a === "--ascii") cli.ascii = true;
+    else if (a === "--no-sound") cli.sound = false;
     else if (a === "--data-dir" && next) {
       cli.dataDir = next;
       i++;
@@ -157,6 +161,7 @@ class SceneView extends Renderable {
 async function main(): Promise<void> {
   const cli = parseArgs(process.argv.slice(2));
   const charset: Charset = cli.ascii || process.env.STILLWOOD_ASCII === "1" ? "ascii" : "unicode";
+  const sounds = cli.sound && process.env.STILLWOOD_NO_SOUND !== "1" ? new SoundPlayer() : null;
 
   const app = new StillwoodApp({
     timerClock: monotonicClock,
@@ -165,6 +170,7 @@ async function main(): Promise<void> {
     charset,
     durationMin: cli.minutes,
     species: cli.species,
+    sound: (cue) => sounds?.play(cue),
   });
 
   let exitCode = 0;
