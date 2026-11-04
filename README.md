@@ -31,8 +31,6 @@ With [Bun](https://bun.sh):
 bunx stillwood
 ```
 
-You can also download a binary from the [releases page](https://github.com/Ahm3tJ4f/stillwood/releases).
-
 ## Walkthrough
 
 The GIFs show the real app. In them, time goes faster.
@@ -77,7 +75,9 @@ and `→` to go to an earlier or a later period.
 ![The seven species of tree](assets/species.png)
 
 Each tree is one of seven species: oak, pine, maple, cherry, birch, blue spruce and jacaranda.
-Each species has its own colors. A longer session grows a taller tree. If you end a session
+Each species has its own colors. Before you plant the seed, press `t` to select the next species,
+or click the name of the species. If you do not select a species, Stillwood selects one at
+random. A longer session grows a taller tree. If you end a session
 before the time is done, the tree stays small and gray.
 
 Stillwood uses only the 16 colors of your terminal theme, so it shows correctly in light and
@@ -87,26 +87,27 @@ dark themes.
 
 The bottom line of the screen always shows the keys that you can use.
 
-| Screen                   | Keys                                                                         |
-| ------------------------ | ---------------------------------------------------------------------------- |
-| Garden, before the start | `space` plant the seed · `←` `→` set the length · `f` forest · `q` quit      |
-| Garden, in a session     | `space` stop or continue the timer · `a` end the session · `f` forest        |
-| Forest, day              | `←` `→` select a tree · `enter` open the tree · `[` `]` earlier or later day |
-| Forest, week to year     | `←` `→` earlier or later week, month or year                                 |
-| Forest, all              | `d` `w` `m` `y` day, week, month or year · `f` back to the garden            |
-| All screens              | `1` garden · `2` forest · `Ctrl+C` quit · `Ctrl+Z` suspend                   |
+| Screen                   | Keys                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| Garden, before the start | `space` plant the seed · `←` `→` set the length · `t` tree type · `f` forest · `q` quit |
+| Garden, in a session     | `space` stop or continue the timer · `a` end the session · `f` forest                   |
+| Forest, day              | `←` `→` select a tree · `enter` open the tree · `[` `]` earlier or later day            |
+| Forest, week to year     | `←` `→` earlier or later week, month or year                                            |
+| Forest, all              | `d` `w` `m` `y` day, week, month or year · `f` back to the garden                       |
+| All screens              | `1` garden · `2` forest · `Ctrl+C` quit · `Ctrl+Z` suspend                              |
 
 You can also click a tree, a tab or a key in a panel border.
 
 ## Options
 
-| Option             | Function                                                          |
-| ------------------ | ----------------------------------------------------------------- |
-| `--minutes <n>`    | Set the length of the first session. The default is 25.           |
-| `--no-color`       | Show no colors. The `NO_COLOR` variable has the same effect.      |
-| `--ascii`          | Use only ASCII characters, for fonts without box or tree symbols. |
-| `--data-dir <dir>` | Keep the history in a different directory.                        |
-| `-v`, `--version`  | Show the version.                                                 |
+| Option             | Function                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| `--minutes <n>`    | Set the length of the first session. The default is 25.                                       |
+| `--species <id>`   | Always grow this species: `oak`, `pine`, `maple`, `cherry`, `birch`, `spruce` or `jacaranda`. |
+| `--no-color`       | Show no colors. The `NO_COLOR` variable has the same effect.                                  |
+| `--ascii`          | Use only ASCII characters, for fonts without box or tree symbols.                             |
+| `--data-dir <dir>` | Keep the history in a different directory.                                                    |
+| `-v`, `--version`  | Show the version.                                                                             |
 
 ## History
 

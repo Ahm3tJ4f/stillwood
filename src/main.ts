@@ -22,6 +22,7 @@ import { StillwoodApp } from "./app.ts";
 import { BOLD, DEFAULT, DIM, type Canvas } from "./canvas.ts";
 import type { Charset } from "./scene/look.ts";
 import { renderScene } from "./scene/index.ts";
+import { findSpecies, SPECIES, type Species } from "./species.ts";
 import { HistoryStore, defaultDataDir } from "./storage.ts";
 import { monotonicClock } from "./timer.ts";
 
@@ -30,6 +31,7 @@ const USAGE = `stillwood ${pkg.version} - a quiet focus timer where a bonsai gro
 usage: stillwood [options]
 
   --minutes <n>     initial focus length in minutes (default 25)
+  --species <id>    always grow this tree type (${SPECIES.map((s) => s.id).join(", ")})
   --no-color        no colours, only bold and dim (also NO_COLOR)
   --ascii           ASCII-only glyphs: plain box lines, no unicode symbols
   --data-dir <dir>  where history is kept (also STILLWOOD_DATA_DIR)
@@ -39,6 +41,7 @@ usage: stillwood [options]
 
 interface Cli {
   minutes?: number;
+  species?: Species;
   color: boolean;
   ascii: boolean;
   dataDir?: string;
@@ -57,6 +60,15 @@ function parseArgs(argv: string[]): Cli {
       process.exit(0);
     } else if (a === "--minutes" && next) {
       cli.minutes = Number(next);
+      i++;
+    } else if (a === "--species" && next) {
+      cli.species = findSpecies(next);
+      if (!cli.species) {
+        process.stderr.write(
+          `unknown species: ${next} (use ${SPECIES.map((s) => s.id).join(", ")})\n`,
+        );
+        process.exit(2);
+      }
       i++;
     } else if (a === "--no-color") cli.color = false;
     else if (a === "--ascii") cli.ascii = true;
@@ -152,6 +164,7 @@ async function main(): Promise<void> {
     store: new HistoryStore(cli.dataDir ?? defaultDataDir()),
     charset,
     durationMin: cli.minutes,
+    species: cli.species,
   });
 
   let exitCode = 0;

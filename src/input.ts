@@ -23,6 +23,7 @@ export type Action =
   | "cancel"
   | "longer"
   | "shorter"
+  | "species-next"
   | "forest"
   | "show-garden"
   | "back"
@@ -81,6 +82,7 @@ export const BINDINGS: Record<Mode, Binding[]> = {
       label: "duration",
     },
     { keys: ["right", "l", "+", "=", "up", "k"], action: "longer" },
+    { keys: ["t"], action: "species-next", caption: "t", label: "tree type" },
     { keys: ["f", "2"], action: "forest", caption: "f", label: "forest" },
     QUIT,
   ],
