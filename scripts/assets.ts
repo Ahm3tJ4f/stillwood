@@ -2,7 +2,7 @@
  * Draws the README images with the app's own renderer.
  *
  *   assets/banner.svg    an animated banner: trees of six species grow and bloom
- *   assets/*.gif         a walkthrough: the real app, keys pressed, time at high speed
+ *   assets/*.gif         a walkthrough: the real app, each pressed key under the screen, time at high speed
  *   assets/species.png   the seven species
  *
  * Needs Google Chrome, Chromium or Brave for the pictures and ffmpeg for the GIFs.
@@ -51,8 +51,14 @@ const FG = "#d3d7cf";
 const BG = "#16181a";
 const NOW = new Date(2026, 8, 23, 18, 0);
 const g = glyphsFor("unicode");
+/** The height of the key bar under the screen in the GIFs, in px. */
+const KEY_BAR = 46;
+/** A pressed key stays in the key bar for at least this long, in ms. */
+const KEY_MS = 1000;
 
-type Frame = { c: Canvas<unknown>; ms: number };
+/** A key press, shown in a bar under the screen. */
+type Keystroke = { key: string; label: string; count: number };
+type Frame = { c: Canvas<unknown>; ms: number; key?: Keystroke | null };
 
 const byId = (id: string) => SPECIES.find((s) => s.id === id)!;
 const color = (fg: number) => (fg === DEFAULT ? FG : PALETTE[fg]!);
@@ -60,7 +66,25 @@ const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").rep
 
 // -- pictures --------------------------------------------------------------------
 
-function html(c: Canvas<unknown>): string {
+/** The names of keys, as they show on a keycap. */
+const CAPS: Record<string, string> = {
+  left: "←",
+  right: "→",
+  up: "↑",
+  down: "↓",
+  return: "enter",
+  escape: "esc",
+};
+
+/** The key bar under the screen. It is empty when no key is pressed. */
+function keyBar(k: Keystroke | null): string {
+  if (!k) return `<div class="k"></div>`;
+  const times = k.count > 1 ? `<span class="n">×${k.count}</span>` : "";
+  return `<div class="k"><kbd>${escape(CAPS[k.key] ?? k.key)}</kbd>${times}<span class="l">${escape(k.label)}</span></div>`;
+}
+
+/** `key` adds the key bar: `null` shows an empty bar, `undefined` no bar. */
+function html(c: Canvas<unknown>, key?: Keystroke | null): string {
   let body = "";
   for (let y = 0; y < c.height; y++) {
     let row = "";
@@ -78,7 +102,11 @@ function html(c: Canvas<unknown>): string {
 body{margin:0;background:${BG}}
 .t{font:16px/20px Menlo,"JetBrains Mono","DejaVu Sans Mono",monospace;white-space:pre;padding:12px 14px}
 .t span{display:inline-block;width:1ch;height:20px;overflow:hidden;vertical-align:top}
-</style><div class="t">${body}</div>`;
+.k{height:${KEY_BAR - 10}px;margin:0 14px 10px;border-top:1px solid #2a2d30;display:flex;align-items:center;gap:10px;font:15px Menlo,"JetBrains Mono","DejaVu Sans Mono",monospace;color:${FG}}
+.k kbd{font:bold 15px Menlo,"JetBrains Mono","DejaVu Sans Mono",monospace;color:#eeeeec;background:#2e3436;border:1px solid #555753;border-bottom-width:3px;border-radius:6px;padding:3px 10px;min-width:12px;text-align:center}
+.k .n{color:#fce94f;font-weight:bold}
+.k .l{color:#888a85}
+</style><div class="t">${body}</div>${key === undefined ? "" : keyBar(key)}`;
 }
 
 function browser(): string {
@@ -96,13 +124,18 @@ function browser(): string {
 }
 
 /** Take a screenshot of one canvas. */
-async function shoot(c: Canvas<unknown>, file: string, scale: number): Promise<void> {
+async function shoot(
+  c: Canvas<unknown>,
+  file: string,
+  scale: number,
+  key?: Keystroke | null,
+): Promise<void> {
   const dir = mkdtempSync(join(tmpdir(), "stillwood-shot-"));
   const page = join(dir, "page.html");
-  writeFileSync(page, html(c));
+  writeFileSync(page, html(c, key));
   // One column of 16px Menlo is 9.63px; the page adds 14px and 12px of padding.
   const width = Math.ceil(c.width * 9.63 + 28);
-  const height = c.height * 20 + 24;
+  const height = c.height * 20 + 24 + (key === undefined ? 0 : KEY_BAR);
   const proc = Bun.spawn(
     [
       browser(),
@@ -129,17 +162,21 @@ async function gif(name: string, frames: Frame[]): Promise<void> {
     a.ch.join("") === b.ch.join("") &&
     a.fg.join() === b.fg.join() &&
     a.attr.join() === b.attr.join();
+  const sameKey = (a: Frame, b: Frame) =>
+    a.key?.key === b.key?.key && a.key?.label === b.key?.label && a.key?.count === b.key?.count;
   const merged: Frame[] = [];
   for (const f of frames) {
     const last = merged.at(-1);
-    if (last && same(last.c, f.c)) last.ms += f.ms;
+    if (last && sameKey(last, f) && same(last.c, f.c)) last.ms += f.ms;
     else merged.push({ ...f });
   }
   const dir = mkdtempSync(join(tmpdir(), "stillwood-gif-"));
   const files = merged.map((_, i) => join(dir, `${String(i).padStart(3, "0")}.png`));
   // A few browsers at a time.
   for (let i = 0; i < merged.length; i += 6) {
-    await Promise.all(merged.slice(i, i + 6).map((f, k) => shoot(f.c, files[i + k]!, 1.25)));
+    await Promise.all(
+      merged.slice(i, i + 6).map((f, k) => shoot(f.c, files[i + k]!, 1.25, f.key ?? null)),
+    );
   }
   const list = merged.map((f, i) => `file '${files[i]}'\nduration ${(f.ms / 1000).toFixed(2)}`);
   writeFileSync(join(dir, "list.txt"), `${list.join("\n")}\nfile '${files.at(-1)}'\n`);
@@ -178,6 +215,9 @@ class Take {
   anim = 0;
   frames: Frame[] = [];
   readonly app: StillwoodApp;
+  /** The last key, shown for at least KEY_MS, so a second press of it shows "×2". */
+  private key: Keystroke | null = null;
+  private keyUntil = 0;
 
   constructor(history: CompletedSession[], seed: number) {
     const store: HistoryBackend = {
@@ -198,14 +238,20 @@ class Take {
 
   /** Show the screen for `ms`, while `focus` ms of the session go by. */
   hold(ms: number, focus = 0): void {
+    const key = this.anim < this.keyUntil ? this.key : null;
     this.focus += focus;
     this.anim += ms;
     this.app.tick();
-    this.frames.push({ c: renderScene(this.app.scene(80, 24)), ms });
+    this.frames.push({ c: renderScene(this.app.scene(80, 24)), ms, key });
   }
 
-  press(name: string, ms = 700): void {
+  /** Press a key, and show it with `label` in the key bar. */
+  press(name: string, label: string, ms = 700): void {
     this.app.handleKey({ name, sequence: name.length === 1 ? name : undefined });
+    const shown = this.anim < this.keyUntil ? this.key : null;
+    const again = shown?.key === name && shown.label === label;
+    this.key = { key: name, label, count: again ? shown.count + 1 : 1 };
+    this.keyUntil = this.anim + KEY_MS;
     this.hold(ms);
   }
 
@@ -221,8 +267,9 @@ async function walkthrough(): Promise<void> {
 
   // 1. Set the length and plant the seed.
   take.hold(1400);
-  for (const key of ["left", "left", "right", "right", "right", "left"]) take.press(key, 650);
-  take.press("space", 500);
+  for (const key of ["left", "left", "right", "right", "right", "left"])
+    take.press(key, key === "left" ? "shorter session" : "longer session", 650);
+  take.press("space", "plant the seed", 500);
   for (let i = 0; i < 5; i++) take.hold(260, 15_000);
   await gif("plant", take.cut());
 
@@ -233,34 +280,34 @@ async function walkthrough(): Promise<void> {
   await gif("grow", take.cut());
 
   // 3. Pause, then end a session early: that tree stays small and gray.
-  take.press("space", 900);
-  take.press("space", 300);
+  take.press("space", "stop the timer", 900);
+  take.press("space", "continue", 300);
   for (let i = 0; i < 10; i++) take.hold(200, 45_000);
-  take.press("space", 1500);
-  take.press("space", 500);
+  take.press("space", "stop the timer", 1500);
+  take.press("space", "continue", 500);
   for (let i = 0; i < 4; i++) take.hold(200, 45_000);
-  take.press("a", 1700);
-  take.press("y", 2400);
+  take.press("a", "end the session", 1700);
+  take.press("y", "yes, end it", 2400);
   await gif("stop", take.cut());
 
   // 4. The forest opens on today. Pick a tree and watch it grow again.
-  take.press("f", 1600);
-  for (const key of ["left", "left", "left"]) take.press(key, 750);
-  take.press("return", 150);
+  take.press("f", "open the forest", 1600);
+  for (const key of ["left", "left", "left"]) take.press(key, "select a tree", 750);
+  take.press("return", "see the tree grow again", 150);
   for (let i = 0; i < 16; i++) take.hold(300);
   take.hold(1200);
-  take.press("escape", 1400);
+  take.press("escape", "back to the day", 1400);
   await gif("forest", take.cut());
 
   // 5. Zoom out to the week, the month and the year, and move through time.
-  take.press("w", 1700);
-  take.press("left", 1300);
-  take.press("right", 1000);
-  take.press("m", 1700);
-  take.press("y", 1900);
-  take.press("left", 1300);
-  take.press("right", 1000);
-  take.press("d", 1300);
+  take.press("w", "week", 1700);
+  take.press("left", "earlier week", 1300);
+  take.press("right", "later week", 1000);
+  take.press("m", "month", 1700);
+  take.press("y", "year", 1900);
+  take.press("left", "earlier year", 1300);
+  take.press("right", "later year", 1000);
+  take.press("d", "day", 1300);
   await gif("maps", take.cut());
 }
 

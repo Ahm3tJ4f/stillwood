@@ -33,7 +33,8 @@ bunx stillwood
 
 ## Walkthrough
 
-The GIFs show the real app. In them, time goes faster.
+The GIFs show the real app. In them, time goes faster. The bar under each GIF shows the key that
+is pressed and what it does.
 
 ### 1. Plant a seed
 
@@ -51,8 +52,8 @@ tree blooms.
 
 ### 3. Stop the timer or end the session
 
-Press `space` to stop the timer. Press `space` again to continue. Press `a` to end the session. A
-tree from a session that you end stays small and gray.
+Press `space` to stop the timer. Press `space` again to continue. Press `a` to end the session,
+then press `y` to agree. A tree from a session that you end stays small and gray.
 
 ![Stop the timer, then end the session](assets/stop.gif)
 
